@@ -148,11 +148,11 @@ void TBApplication::CreateTopSplineSamples(int sampleNum)
 void TBApplication::CreateBottomTridSamples (int sampleNum)
 {
     Vector3f center1(-2, 0, 0);
-    Vector3f center2(2, 0, 0);
-    Vector3f center3(0, 2, 0);
+    Vector3f center2(0, 0, 0);
+    Vector3f center3(4, 0, 0);
     Circle3f cir1(center1, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-    Circle3f cir2(center2, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-    Circle3f cir3(center3, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
+    Circle3f cir2(center2, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
+    Circle3f cir3(center3, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.2);
     mTridCircle = new0 TridCircle(cir1, cir2, cir3);
 
     BSplineCurve3f *pSpline = mTridCircle->CreateCircle();
