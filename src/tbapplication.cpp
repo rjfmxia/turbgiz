@@ -18,24 +18,33 @@ TBApplication::TBApplication ()
         Float4(1.0f, 1.0f, 1.0f, 1.0f))
 {
     Environment::InsertDirectory(ThePath + "Data/");
-
-    mNumVertices = 0;
-    mVertices = 0;
-    mDelaunay = 0;
-    mTridCircle = 0;
 }
 
 TBApplication::~TBApplication ()
 {
-    delete0(mTridCircle);
 }
 //----------------------------------------------------------------------------
+
+void TBApplication::InitializeDataModel ()
+{
+    mBeginTridCircles[0] = Circle3f(Vector3f(-2, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
+    mBeginTridCircles[1] = Circle3f(Vector3f(0, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
+    mBeginTridCircles[2] = Circle3f(Vector3f(4, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
+    mEndTridCircles[0] = Circle3f(Vector3f(-1, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
+    mEndTridCircles[1] = Circle3f(Vector3f(0, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.11);
+    mEndTridCircles[2] = Circle3f(Vector3f(2, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
+    mInterpoStep = 10;
+    mHeight = 10;
+}
+
 bool TBApplication::OnInitialize ()
 {
     if (!WindowApplication3::OnInitialize())
     {
         return false;
     }
+
+    InitializeDataModel();
 
     // The scene creation involves culling, so mCuller needs to know its
     // camera now.
@@ -61,15 +70,12 @@ bool TBApplication::OnInitialize ()
 
     InitializeCameraMotion(1.0f, 0.01f);
     InitializeObjectMotion(mScene);
+
     return true;
 }
 //----------------------------------------------------------------------------
 void TBApplication::OnTerminate ()
 {
-    delete1(mVertices);
-    delete0(mTridCircle);
-    delete0(mDelaunay);
-
     mScene = 0;
     mWireState = 0;
     mCullState = 0;
@@ -115,127 +121,6 @@ bool TBApplication::OnKeyDown (unsigned char key, int x, int y)
     return WindowApplication::OnKeyDown(key, x, y);
 }
 
-void TBApplication::CreateTopSplineSamples(int sampleNum)
-{
-   //  Vector3f center1(-2, 0, 0);
-   //  Vector3f center2(2, 0, 0);
-   //  Vector3f center3(0, 2, 0);
-   //  Circle3f cir1(center1, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-   //  Circle3f cir2(center2, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-   //  Circle3f cir3(center3, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-   //  mTridCircle = new0 TridCircle(cir1, cir2, cir3);
-
-   //  BSplineCurve3f *pSpline = mTridCircle->CreateCircle();
-
-   //  int lineSegPoints = 4;
-   //  mNumVertices = sampleNum + lineSegPoints;
-   //  mVertices = new1<Vector3f>(mNumVertices);
-   //  float mult = 1.0f/(sampleNum - 1);
-   //  int i = 0;
-   //  for (; i < sampleNum; ++i)
-   //  {
-   //      mVertices[i] = pSpline->GetPosition(mult * i);
-   //  }
-
-   //  mVertices[i++] = Vector3f(0, 0.25, 5);
-   //  mVertices[i++] = Vector3f(0, 0, 5);
-   //  mVertices[i++] = Vector3f(0, -0.25, 5);
-   //  mVertices[i++] = Vector3f(0, -0.5, 5);
-   // // mVertices[i++] = Vector3f(0, 0, 0);
-   //  delete0(pSpline);
-}
-
-void TBApplication::CreateBottomTridSamples (int sampleNum)
-{
-    Vector3f center1(-2, 0, 0);
-    Vector3f center2(0, 0, 0);
-    Vector3f center3(4, 0, 0);
-    Circle3f cir1(center1, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-    Circle3f cir2(center2, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
-    Circle3f cir3(center3, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.2);
-    mTridCircle = new0 TridCircle(cir1, cir2, cir3);
-
-    BSplineCurve3f *pSpline = mTridCircle->CreateCircle();
-
-    int lineSegPoints = 4;
-    mNumVertices = sampleNum + lineSegPoints;
-    mVertices = new1<Vector3f>(mNumVertices);
-    float mult = 1.0f/(sampleNum - 1);
-    int i = 0;
-    for (; i < sampleNum; ++i)
-    {
-        mVertices[i] = pSpline->GetPosition(mult * i);
-    }
-
-    mVertices[i++] = Vector3f(0, 0.25, 5);
-    mVertices[i++] = Vector3f(0, 0, 5);
-    mVertices[i++] = Vector3f(0, -0.25, 5);
-    mVertices[i++] = Vector3f(0, -0.5, 5);
-   // mVertices[i++] = Vector3f(0, 0, 0);
-    delete0(pSpline);
-}
-
-void TBApplication::CreateCricleSamples ()
-{
-    mNumVertices = 20;
-    mVertices = new1<Vector3f>(mNumVertices);
-
-    float angle = Mathf::TWO_PI / (mNumVertices / 2);
-    int i;
-    for (i = 0; i < mNumVertices / 2; ++i)
-    {
-        mVertices[i].X() = Mathf::Cos(angle * i);
-        mVertices[i].Y() = Mathf::Sin(angle * i);
-        mVertices[i].Z() = 0;
-    }
-
-    for (; i < mNumVertices; ++i)
-    {
-        mVertices[i].X() = 0.5 * Mathf::Cos(angle * i);
-        mVertices[i].Y() = 0.5 * Mathf::Sin(angle * i);
-        mVertices[i].Z() = 1;
-    }
-}
-
-TriMesh* TBApplication::CreateTetra (int index)
-{
-    const Vector3f* dvertices = mDelaunay->GetVertices();
-    const int* dindices = mDelaunay->GetIndices();
-
-    VertexFormat* vformat = VertexFormat::Create(2,
-        VertexFormat::AU_POSITION, VertexFormat::AT_FLOAT3, 0,
-        VertexFormat::AU_COLOR, VertexFormat::AT_FLOAT4, 0);
-    int vstride = vformat->GetStride();
-
-    VertexBuffer* vbuffer = new0 VertexBuffer(4, vstride);
-    VertexBufferAccessor vba(vformat, vbuffer);
-    vba.Position<Vector3f>(0) = dvertices[dindices[4*index    ]];
-    vba.Position<Vector3f>(1) = dvertices[dindices[4*index + 1]];
-    vba.Position<Vector3f>(2) = dvertices[dindices[4*index + 2]];
-    vba.Position<Vector3f>(3) = dvertices[dindices[4*index + 3]];
-    Float4 lightGray(0.75f, 0.75f, 0.75f, 1.0f);
-    vba.Color<Float4>(0, 0) = lightGray;
-    vba.Color<Float4>(0, 1) = lightGray;
-    vba.Color<Float4>(0, 2) = lightGray;
-    vba.Color<Float4>(0, 3) = lightGray;
-
-    IndexBuffer* ibuffer = new0 IndexBuffer(12, sizeof(int));
-    int* indices = (int*)ibuffer->GetData();
-    indices[ 0] = 0;  indices[ 1] = 1;  indices[ 2] = 2;
-    indices[ 3] = 0;  indices[ 4] = 3;  indices[ 5] = 1;
-    indices[ 6] = 0;  indices[ 7] = 2;  indices[ 8] = 3;
-    indices[ 9] = 3;  indices[10] = 2;  indices[11] = 1;
-
-    TriMesh* tetra = new0 TriMesh(vformat, vbuffer, ibuffer);
-    VisualEffectInstance* instance =
-        VertexColor4Effect::CreateUniqueInstance();
-    instance->GetEffect()->GetAlphaState(0, 0)->BlendEnabled = true;
-    instance->GetEffect()->GetWireState(0, 0)->Enabled = true;
-    tetra->SetEffectInstance(instance);
-
-    return tetra;
-}
-
 //----------------------------------------------------------------------------
 void TBApplication::CreateScene ()
 {
@@ -256,35 +141,164 @@ void TBApplication::CreateScene ()
     sphere->SetEffectInstance(VertexColor3Effect::CreateUniqueInstance());
     mTrnNode->SetChild(1, sphere);
 
-    LoadData();
+    // Create mesh.
+    TriMesh* mesh = CreateMesh();
+    mScene->AttachChild(mesh);
 }
 
-void TBApplication::LoadData ()
-{
-    delete1(mVertices);
+void TBApplication::CreateSamples(const Circle3f& circle1,
+                                  const Circle3f& circle2,
+                                  const Circle3f& circle3,
+                                  std::vector<Vector3f>& vertices,
+                                  float height) {
 
-    CreateBottomTridSamples(20);
+    TridCircle *tc = new0 TridCircle(circle1, circle2, circle3);
+    BSplineCurve3f *pSpline = tc->CreateCircle();
 
-    mDelaunay = new0 Delaunay3f(mNumVertices, mVertices, 0.001f, true,
-        Query::QT_REAL);
-
-    for (int j = 0; j < mDelaunay->GetNumSimplices(); ++j)
+    float mult = 1.0f/20;
+    int i = 0;
+    for (; i < 20; ++i)
     {
-        mScene->AttachChild(CreateTetra(j));
+        Vector3f pos = pSpline->GetPosition(mult * i);
+        // TridCircle always compute the circle on xy plane.
+        pos.Z() = height;
+        vertices.push_back(pos);
+    }
+    delete0(tc);
+    delete0(pSpline);
+}
+
+Circle3f TBApplication::LinearCircleInterpolate(const Circle3f& circleBegin, const Circle3f& circleEnd,
+                                                int count, int index) {
+    // Compute center position.
+    Vector3f dir = circleEnd.Center - circleBegin.Center;
+    float distance = dir.Normalize();
+    Vector3f center = circleBegin.Center + dir * (distance * (index * 1.0 / count));
+
+    float radius = circleBegin.Radius + (circleEnd.Radius - circleBegin.Radius) * (index * 1.0 / count);
+    return Circle3f(center, circleBegin.Direction0, circleBegin.Direction1, circleBegin.Normal, radius);
+}
+
+TriMesh* TBApplication::CreateMesh() {
+
+    std::vector<Vector3f> allVertices;
+    std::vector<Vector3f> samples;
+    std::vector<Vector3f> delaunaySamples;
+    std::vector<int> indices;
+    int currentIndex = 0;
+    int sampleCount = 20;
+    int delaunaySamplesCount = sampleCount * 2;
+
+    // Create silhouette mesh.
+    for (int step = 0; step < mInterpoStep+1; step++) {
+
+        float height = step * (mHeight * (1.0 / mInterpoStep));
+
+        Circle3f cir1 = LinearCircleInterpolate(mBeginTridCircles[0], mEndTridCircles[0], mInterpoStep, step);
+        Circle3f cir2 = LinearCircleInterpolate(mBeginTridCircles[1], mEndTridCircles[1], mInterpoStep, step);
+        Circle3f cir3 = LinearCircleInterpolate(mBeginTridCircles[2], mEndTridCircles[2], mInterpoStep, step);
+
+        delaunaySamples.clear();
+        delaunaySamples.insert(delaunaySamples.end(), samples.begin(), samples.end());
+        samples.clear();
+        CreateSamples(cir1, cir2, cir3, samples, height);
+        delaunaySamples.insert(delaunaySamples.end(), samples.begin(), samples.end());
+
+        if (delaunaySamples.size() == delaunaySamplesCount) {
+            Vector3f *vertices = new1<Vector3f>(sampleCount * 2);
+            int i = 0;
+            for (std::vector<Vector3f>::iterator it = delaunaySamples.begin();
+                it != delaunaySamples.end(); it++, i++) {
+                Vector3f pos = *it;
+                vertices[i] = pos;
+            }
+            ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2, vertices, 0.0001f, false, Query::QT_REAL);
+            
+            int indexOffset = allVertices.size() - sampleCount;
+
+            int numTriangles = pHull->GetNumSimplices();
+            const int* hullIndices = pHull->GetIndices();
+            for (int i=0; i<numTriangles; i++) {
+
+                int p1 = hullIndices[i*3];
+                int p2 = hullIndices[i*3 + 1];
+                int p3 = hullIndices[i*3 + 2];
+
+                if ((p1 < sampleCount && p2 < sampleCount && p3 < sampleCount) || 
+                    (p1 >= sampleCount && p2 >= sampleCount && p3 >= sampleCount)) {
+                    continue;
+                }
+
+                indices.push_back(p1 + indexOffset);
+                indices.push_back(p2 + indexOffset);
+                indices.push_back(p3 + indexOffset);
+            }
+
+            delete0(pHull);
+            delete1(vertices);
+        }
+
+        // Adding sample vertices.
+        allVertices.insert(allVertices.end(), samples.begin(), samples.end());
+        currentIndex += sampleCount;
     }
 
-    // Create three sphere as indicators.
-    Circle3f cir0 = mTridCircle->GetCircle(0);
-    TriMesh* sphere0 = CreateSphere(cir0.Center, cir0.Radius);
-    mScene->AttachChild(sphere0);
+    // Adding top and bottom faces.
+    allVertices.push_back(mBeginTridCircles[1].Center);
+    int btCenter = allVertices.size() - 1;
+    for (int i=0; i<sampleCount; i++) {
+        indices.push_back(i);
+        indices.push_back(btCenter);
+        int p2 = i + 1;
+        if (p2 == sampleCount) {
+            p2 = 0;
+        }
+        indices.push_back(p2);
+    }
 
-    Circle3f cir1 = mTridCircle->GetCircle(1);
-    TriMesh* sphere1 = CreateSphere(cir1.Center, cir1.Radius);
-    mScene->AttachChild(sphere1);
+    allVertices.push_back(mEndTridCircles[1].Center);
+    int tpCenter = allVertices.size() - 1;
+    for (int i=currentIndex-sampleCount; i<currentIndex; i++) {
+        indices.push_back(i);
+        indices.push_back(tpCenter);
+        int p2 = i + 1;
+        if (p2 == currentIndex) {
+            p2 = currentIndex-sampleCount;
+        }
+        indices.push_back(p2);
+    }
 
-    Circle3f cir2 = mTridCircle->GetCircle(2);
-    TriMesh* sphere2 = CreateSphere(cir2.Center, cir2.Radius);
-    mScene->AttachChild(sphere2);
+    // Create mesh.
+    VertexFormat* vformat = VertexFormat::Create(2,
+        VertexFormat::AU_POSITION, VertexFormat::AT_FLOAT3, 0,
+        VertexFormat::AU_COLOR, VertexFormat::AT_FLOAT4, 0);
+    int vstride = vformat->GetStride();
+
+    VertexBuffer* vbuffer = new0 VertexBuffer(allVertices.size(), vstride);
+    VertexBufferAccessor vba(vformat, vbuffer);
+    Float4 lightGray(0.75f, 0.75f, 0.75f, 1.0f);
+    std::vector<Vector3f>::iterator it =  allVertices.begin();
+    for (int j=0; it != allVertices.end(); it++, j++) {
+        vba.Position<Vector3f>(j) = *it;
+        vba.Color<Float4>(0, j) = lightGray;
+    }
+
+    int indexCount = indices.size();
+    IndexBuffer* ibuffer = new0 IndexBuffer(indexCount, sizeof(int));
+    int* indicesBuf = (int*)ibuffer->GetData();
+
+    std::vector<int>::iterator iit =  indices.begin();
+    for (int j=0; iit != indices.end(); iit++, j++) {
+        indicesBuf[j] = *iit; 
+    }
+
+    TriMesh* tetra = new0 TriMesh(vformat, vbuffer, ibuffer);
+    VisualEffectInstance* instance = VertexColor4Effect::CreateUniqueInstance();
+    instance->GetEffect()->GetAlphaState(0, 0)->BlendEnabled = true;
+    instance->GetEffect()->GetWireState(0, 0)->Enabled = true;
+    tetra->SetEffectInstance(instance);
+
+    return tetra;
 }
 
 //----------------------------------------------------------------------------

@@ -37,6 +37,9 @@ private:
     Circle2f ToCircle2f(const Circle3f& circle3);
     Circle3f ToCircle3f(const Circle2f& circle2);
 
+    // Add a point into array if the point is not exist in the array.
+    void AddUniquePoint(Vector3f position, std::vector<Vector3f>& vertices);
+
 private:
     Circle3f m_Circles[3];
 };

@@ -21,17 +21,21 @@ public:
     virtual bool OnKeyDown (unsigned char key, int x, int y);
 
 protected:
+    void InitializeDataModel();
+
+    Circle3f LinearCircleInterpolate(const Circle3f& circle1,
+                                     const Circle3f& circle2,
+                                     int count, int index);
+
+    void CreateSamples(const Circle3f& circle1,
+                       const Circle3f& circle2,
+                       const Circle3f& circle3,
+                       std::vector<Vector3f>& vertices,
+                       float height);
+
+    TriMesh* CreateMesh();
     void CreateScene ();
-    void CreateCricleSamples ();
-    void CreateBottomTridSamples (int sampleNum);
-    void CreateTopSplineSamples (int sampleNum);
-    void LoadData ();
-
     TriMesh* CreateSphere (const Vector3f& origin, float radius);
-    TriMesh* CreateTetra (int index);
-
-    int mNumVertices;
-    Vector3f* mVertices;
 
     // A visual representation of the hull.
     NodePtr mScene, mTrnNode;
@@ -39,8 +43,10 @@ protected:
     CullStatePtr mCullState;
     Culler mCuller;
 
-    Delaunay3f* mDelaunay;
-    TridCircle* mTridCircle;
+    Circle3f mBeginTridCircles[3];
+    Circle3f mEndTridCircles[3];
+    int mInterpoStep;
+    int mHeight;
 };
 
 WM5_REGISTER_INITIALIZE(TBApplication);

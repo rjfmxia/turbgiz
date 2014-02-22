@@ -66,6 +66,26 @@ Circle3f TridCircle::ToCircle3f(const Circle2f& circle2)
     return Circle3f(center, Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), circle2.Radius);
 }
 
+void TridCircle::AddUniquePoint(Vector3f position, std::vector<Vector3f>& vertices)
+{
+    float eps = 0.0001f;
+    bool pointExist = false;
+    std::vector<Vector3f>::iterator it = vertices.begin();
+    for (; it != vertices.end(); it++) {
+        Vector3f pos = *it;
+        if (Mathf::FAbs(pos.X() - position.X()) < eps &&
+            Mathf::FAbs(pos.Y() - position.Y()) < eps &&
+            Mathf::FAbs(pos.Z() - position.Z()) < eps) {
+            pointExist = true;
+            break;
+        }
+    }
+
+    if (!pointExist) {
+        vertices.push_back(position);
+    }
+}
+
 void TridCircle::GetTangentPointsToCircles(const Circle2f& cir0,
                                            const Circle2f& cir1,
                                            std::vector<Vector3f>& results)
@@ -76,9 +96,9 @@ void TridCircle::GetTangentPointsToCircles(const Circle2f& cir0,
         Vector3f point0, point1;
         for (int i=0; i<4; i++) {
             GetTangentPosition(cir0, lines[i], point0);
-            results.push_back(point0);
+            AddUniquePoint(point0, results);
             GetTangentPosition(cir1, lines[i], point1);
-            results.push_back(point1);
+            AddUniquePoint(point1, results);
         }
     }
 }
@@ -113,7 +133,7 @@ BSplineCurve3f *TridCircle::CreateCircle()
     }
 
     // Compute 2D Convex hull.
-    ConvexHull3f *pHull = new0 ConvexHull3f(len, samplePoints, 0.001f, false, Query::QT_REAL);
+    ConvexHull3f *pHull = new0 ConvexHull3f(len, samplePoints, 0.0001f, false, Query::QT_REAL);
     assertion(pHull->GetDimension() == 2, "Incorrect dimension.\n");
 
     ConvexHull2f *pHull2 = pHull->GetConvexHull2();
@@ -146,7 +166,7 @@ void TridCircle::TessellateCircle(const Circle2f& cir, int sampleNum, std::vecto
         float y = cir.Radius * Mathf::Sin(angle * i);
 
         Vector3f position = xform * APoint(x, y, 0);
-        tess.push_back(position);
+        AddUniquePoint(position, tess);
     }
 }
 
