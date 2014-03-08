@@ -4,6 +4,8 @@
 
 #include "Wm5WindowApplication3.h"
 #include "tridcircle.h"
+#include "tbmesh.h"
+
 using namespace Wm5;
 
 class TBApplication : public WindowApplication3
@@ -33,7 +35,11 @@ protected:
                        std::vector<Vector3f>& vertices,
                        float height);
 
-    TriMesh* CreateMesh();
+    // Mesh create methods.
+    void CreateWing(TBMesh &mesh);
+    void CreateBody(TBMesh &mesh);
+    TriMesh* CreateTriMesh(TBMesh &mesh);
+
     void CreateScene ();
     TriMesh* CreateSphere (const Vector3f& origin, float radius);
 

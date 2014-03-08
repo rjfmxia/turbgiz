@@ -5,7 +5,7 @@ GRF ?= Glx
 
 CFLAGS := -c -D__LINUX__ -DWM5_USE_OPENGL
 LIBPATH := -L ../../wildmagic/Library/$(CFG)
-INCPATH := -I ../../wildmagic/Include
+INCPATH := -I ../../wildmagic/Include -I ../../gts/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include
 CORELIBS := -lWm5$(GRF)Application -lWm5$(GRF)Graphics -lWm5Imagics \
             -lWm5Physics -lWm5Mathematics -lWm5Core
 
@@ -14,7 +14,7 @@ CC := /usr/bin/g++
 GCC := /usr/bin/gcc
 XLIBS := -lX11 -lXext
 GLIBS := -lGL -lGLU
-LIBS := $(CORELIBS) $(XLIBS) $(GLIBS) -lpthread -lm 
+LIBS := $(CORELIBS) $(XLIBS) $(GLIBS) -lpthread -lm -lglib-2.0 ../../gts/lib/libgts-0.7.so.5
 endif
 
 ifeq (Debug,$(findstring Debug,$(CFG)))

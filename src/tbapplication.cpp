@@ -8,6 +8,7 @@
 
 #include "tbapplication.h"
 #include "Wm5ConvexHull3.h"
+#include "tbmeshboolean.h"
 
 WM5_WINDOW_APPLICATION(TBApplication);
 
@@ -30,8 +31,13 @@ void TBApplication::InitializeDataModel ()
     mBeginTridCircles[0] = Circle3f(Vector3f(-2, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
     mBeginTridCircles[1] = Circle3f(Vector3f(0, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
     mBeginTridCircles[2] = Circle3f(Vector3f(4, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
+    //mEndTridCircles[0] = Circle3f(Vector3f(-2, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
+    //mEndTridCircles[1] = Circle3f(Vector3f(0, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
+    //mEndTridCircles[2] = Circle3f(Vector3f(4, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
+
+
     mEndTridCircles[0] = Circle3f(Vector3f(-1, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
-    mEndTridCircles[1] = Circle3f(Vector3f(0, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.11);
+    mEndTridCircles[1] = Circle3f(Vector3f(0, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.2);
     mEndTridCircles[2] = Circle3f(Vector3f(2, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
     mInterpoStep = 10;
     mHeight = 10;
@@ -121,6 +127,7 @@ bool TBApplication::OnKeyDown (unsigned char key, int x, int y)
     return WindowApplication::OnKeyDown(key, x, y);
 }
 
+
 //----------------------------------------------------------------------------
 void TBApplication::CreateScene ()
 {
@@ -142,8 +149,28 @@ void TBApplication::CreateScene ()
     mTrnNode->SetChild(1, sphere);
 
     // Create mesh.
-    TriMesh* mesh = CreateMesh();
-    mScene->AttachChild(mesh);
+    TBMesh wing;
+    CreateBody(wing);
+    Transform trans;
+    trans.SetTranslate(Vector3f(-1.0, 0.0, 1.0));
+    wing.transformBy(trans);
+
+    TBMesh body;
+    CreateBody(body);
+    Transform xform;
+    xform.SetRotate(HMatrix(AVector::UNIT_X, Mathf::PI / 2.0));
+    body.transformBy(xform);
+
+    //TBMesh testResult;
+    //TBBoolean::testMeshConvert(wing, testResult);
+
+    // Boolean wings and body.
+    TBMesh result;
+    TBBoolean::add(wing, body, result);
+
+    mScene->AttachChild(CreateTriMesh(result));
+    //mScene->AttachChild(CreateTriMesh(wing));
+    //mScene->AttachChild(CreateTriMesh(body));
 }
 
 void TBApplication::CreateSamples(const Circle3f& circle1,
@@ -179,15 +206,55 @@ Circle3f TBApplication::LinearCircleInterpolate(const Circle3f& circleBegin, con
     return Circle3f(center, circleBegin.Direction0, circleBegin.Direction1, circleBegin.Normal, radius);
 }
 
-TriMesh* TBApplication::CreateMesh() {
+void TBApplication::CreateBody(TBMesh &mesh)
+{
+    // Create bottom faces.
+    int sampleCount = 20;
+    float harfHeight = 2;
+    float radius = 4;
+    Vector3f *vertices = new1<Vector3f>(sampleCount * 2 );
+    float angle = Mathf::TWO_PI / sampleCount;
+    for (int i = 0; i < sampleCount; ++i)
+    {
+        float x = radius * Mathf::Cos(angle * i);
+        float y = radius * Mathf::Sin(angle * i);
+        vertices[i] = Vector3f(x, y, -harfHeight);
+        vertices[i + sampleCount] = Vector3f(x, y, harfHeight);
+    }
 
-    std::vector<Vector3f> allVertices;
+    ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2, vertices, 0.0001f, false, Query::QT_REAL);
+
+    int numTriangles = pHull->GetNumSimplices();
+    const int* hullIndices = pHull->GetIndices();
+    for (int i=0; i<numTriangles; i++) {
+        int p1 = hullIndices[i*3];
+        int p2 = hullIndices[i*3 + 1];
+        int p3 = hullIndices[i*3 + 2];
+
+        mesh.addTriangle(vertices[p1], vertices[p2], vertices[p3]);
+    }
+
+    delete1(vertices);
+    delete0(pHull);
+}
+
+void TBApplication::CreateWing(TBMesh &mesh)
+{
     std::vector<Vector3f> samples;
     std::vector<Vector3f> delaunaySamples;
-    std::vector<int> indices;
-    int currentIndex = 0;
     int sampleCount = 20;
     int delaunaySamplesCount = sampleCount * 2;
+
+    // Adding bottom faces.
+    CreateSamples(mBeginTridCircles[0], mBeginTridCircles[1], mBeginTridCircles[2], samples, 0);
+    std::vector<Vector3f>::iterator it = samples.begin();
+    for (; it != samples.end(); it++) {
+        if (it+1 != samples.end()) {
+            mesh.addTriangle(*it, mBeginTridCircles[1].Center, *(it+1));
+        } else {
+            mesh.addTriangle(*(samples.begin()), mBeginTridCircles[1].Center, *it);
+        }
+    }
 
     // Create silhouette mesh.
     for (int step = 0; step < mInterpoStep+1; step++) {
@@ -213,8 +280,6 @@ TriMesh* TBApplication::CreateMesh() {
                 vertices[i] = pos;
             }
             ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2, vertices, 0.0001f, false, Query::QT_REAL);
-            
-            int indexOffset = allVertices.size() - sampleCount;
 
             int numTriangles = pHull->GetNumSimplices();
             const int* hullIndices = pHull->GetIndices();
@@ -224,61 +289,47 @@ TriMesh* TBApplication::CreateMesh() {
                 int p2 = hullIndices[i*3 + 1];
                 int p3 = hullIndices[i*3 + 2];
 
+                // Filter the top and bottom faces of the hull.
                 if ((p1 < sampleCount && p2 < sampleCount && p3 < sampleCount) || 
                     (p1 >= sampleCount && p2 >= sampleCount && p3 >= sampleCount)) {
                     continue;
                 }
 
-                indices.push_back(p1 + indexOffset);
-                indices.push_back(p2 + indexOffset);
-                indices.push_back(p3 + indexOffset);
+                mesh.addTriangle(vertices[p1], vertices[p2], vertices[p3]);
             }
 
             delete0(pHull);
             delete1(vertices);
         }
-
-        // Adding sample vertices.
-        allVertices.insert(allVertices.end(), samples.begin(), samples.end());
-        currentIndex += sampleCount;
     }
 
-    // Adding top and bottom faces.
-    allVertices.push_back(mBeginTridCircles[1].Center);
-    int btCenter = allVertices.size() - 1;
-    for (int i=0; i<sampleCount; i++) {
-        indices.push_back(i);
-        indices.push_back(btCenter);
-        int p2 = i + 1;
-        if (p2 == sampleCount) {
-            p2 = 0;
+    // Adding top faces.
+    it = samples.begin();
+    for (; it != samples.end(); it++) {
+        if (it+1 != samples.end()) {
+            mesh.addTriangle(*it, mEndTridCircles[1].Center, *(it+1));
+        } else {
+            mesh.addTriangle(*(samples.begin()), mEndTridCircles[1].Center, *it);
         }
-        indices.push_back(p2);
     }
+}
 
-    allVertices.push_back(mEndTridCircles[1].Center);
-    int tpCenter = allVertices.size() - 1;
-    for (int i=currentIndex-sampleCount; i<currentIndex; i++) {
-        indices.push_back(i);
-        indices.push_back(tpCenter);
-        int p2 = i + 1;
-        if (p2 == currentIndex) {
-            p2 = currentIndex-sampleCount;
-        }
-        indices.push_back(p2);
-    }
+TriMesh* TBApplication::CreateTriMesh(TBMesh &mesh) {
 
-    // Create mesh.
+    const std::vector<Vector3f>& vertices = mesh.getVertices();
+    const std::vector<int>& indices = mesh.getIndices();
+
+    // Create TriMesh for rendering.
     VertexFormat* vformat = VertexFormat::Create(2,
         VertexFormat::AU_POSITION, VertexFormat::AT_FLOAT3, 0,
         VertexFormat::AU_COLOR, VertexFormat::AT_FLOAT4, 0);
     int vstride = vformat->GetStride();
 
-    VertexBuffer* vbuffer = new0 VertexBuffer(allVertices.size(), vstride);
+    VertexBuffer* vbuffer = new0 VertexBuffer(vertices.size(), vstride);
     VertexBufferAccessor vba(vformat, vbuffer);
     Float4 lightGray(0.75f, 0.75f, 0.75f, 1.0f);
-    std::vector<Vector3f>::iterator it =  allVertices.begin();
-    for (int j=0; it != allVertices.end(); it++, j++) {
+    std::vector<Vector3f>::const_iterator it =  vertices.begin();
+    for (int j=0; it != vertices.end(); it++, j++) {
         vba.Position<Vector3f>(j) = *it;
         vba.Color<Float4>(0, j) = lightGray;
     }
@@ -287,7 +338,7 @@ TriMesh* TBApplication::CreateMesh() {
     IndexBuffer* ibuffer = new0 IndexBuffer(indexCount, sizeof(int));
     int* indicesBuf = (int*)ibuffer->GetData();
 
-    std::vector<int>::iterator iit =  indices.begin();
+    std::vector<int>::const_iterator iit = indices.begin();
     for (int j=0; iit != indices.end(); iit++, j++) {
         indicesBuf[j] = *iit; 
     }

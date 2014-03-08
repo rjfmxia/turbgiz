@@ -38,19 +38,13 @@ bool TridCircle::GetTangentPosition(const Circle2f& circle,
                                     const Line2f& line2,
                                     Vector3f& point)
 {
-    // Have no DistLine2Circle2...
-    Circle3f cir = ToCircle3f(circle);
+    DistPoint2Line2f dist(circle.Center, line2);
+    dist.GetSquared();
 
-    Vector3f lOri(line2.Origin.X(), line2.Origin.Y(), 0);
-    Vector3f lDir(line2.Direction.X(), line2.Direction.Y(), 0);
-    Line3f line3(lOri, lDir);
-
-    DistLine3Circle3f cl(line3, cir);
-    cl.GetSquared();
-    Vector3f p = cl.GetClosestPoint0();
+    Vector2f p = dist.GetClosestPoint0();
     point.X() = p.X();
     point.Y() = p.Y();
-    point.Z() = p.Z();
+    point.Z() = 0;
     return true;
 }
 
@@ -94,11 +88,18 @@ void TridCircle::GetTangentPointsToCircles(const Circle2f& cir0,
     if (GetTangentsToCircles(cir0, cir1, lines))
     {
         Vector3f point0, point1;
+        Segment2f centerSeg(cir0.Center, cir1.Center);
+        float eps = 0.0001f;
         for (int i=0; i<4; i++) {
-            GetTangentPosition(cir0, lines[i], point0);
-            AddUniquePoint(point0, results);
-            GetTangentPosition(cir1, lines[i], point1);
-            AddUniquePoint(point1, results);
+            // Filter the inner lines.
+            DistLine2Segment2f dist(lines[i], centerSeg);
+            float distance = dist.GetSquared();
+            if (distance > eps) {
+                GetTangentPosition(cir0, lines[i], point0);
+                AddUniquePoint(point0, results);
+                GetTangentPosition(cir1, lines[i], point1);
+                AddUniquePoint(point1, results);
+            }
         }
     }
 }
@@ -133,7 +134,7 @@ BSplineCurve3f *TridCircle::CreateCircle()
     }
 
     // Compute 2D Convex hull.
-    ConvexHull3f *pHull = new0 ConvexHull3f(len, samplePoints, 0.0001f, false, Query::QT_REAL);
+    ConvexHull3f *pHull = new0 ConvexHull3f(len, samplePoints, 0.001f, false, Query::QT_REAL);
     assertion(pHull->GetDimension() == 2, "Incorrect dimension.\n");
 
     ConvexHull2f *pHull2 = pHull->GetConvexHull2();
