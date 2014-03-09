@@ -30,15 +30,10 @@ void TBApplication::InitializeDataModel ()
 {
     mBeginTridCircles[0] = Circle3f(Vector3f(-2, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
     mBeginTridCircles[1] = Circle3f(Vector3f(0, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
-    mBeginTridCircles[2] = Circle3f(Vector3f(4, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-    //mEndTridCircles[0] = Circle3f(Vector3f(-2, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-    //mEndTridCircles[1] = Circle3f(Vector3f(0, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 1.0);
-    //mEndTridCircles[2] = Circle3f(Vector3f(4, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
-
-
+    mBeginTridCircles[2] = Circle3f(Vector3f(3, 0, 0), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.5);
     mEndTridCircles[0] = Circle3f(Vector3f(-1, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
     mEndTridCircles[1] = Circle3f(Vector3f(0, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.2);
-    mEndTridCircles[2] = Circle3f(Vector3f(2, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
+    mEndTridCircles[2] = Circle3f(Vector3f(1, 0, 10), Vector3f(1, 0, 0), Vector3f(0, 1, 0), Vector3f(0, 0, 1), 0.1);
     mInterpoStep = 10;
     mHeight = 10;
 }
@@ -140,37 +135,8 @@ void TBApplication::CreateScene ()
     mCullState->Enabled = false;
     mRenderer->SetOverrideCullState(mCullState);
 
-    VertexFormat* vformat = VertexFormat::Create(2,
-        VertexFormat::AU_POSITION, VertexFormat::AT_FLOAT3, 0,
-        VertexFormat::AU_COLOR, VertexFormat::AT_FLOAT3, 0);
-
-    TriMesh* sphere = StandardMesh(vformat).Sphere(8, 8, 0.01f);
-    sphere->SetEffectInstance(VertexColor3Effect::CreateUniqueInstance());
-    mTrnNode->SetChild(1, sphere);
-
     // Create mesh.
-    TBMesh wing;
-    CreateBody(wing);
-    Transform trans;
-    trans.SetTranslate(Vector3f(-1.0, 0.0, 1.0));
-    wing.transformBy(trans);
-
-    TBMesh body;
-    CreateBody(body);
-    Transform xform;
-    xform.SetRotate(HMatrix(AVector::UNIT_X, Mathf::PI / 2.0));
-    body.transformBy(xform);
-
-    //TBMesh testResult;
-    //TBBoolean::testMeshConvert(wing, testResult);
-
-    // Boolean wings and body.
-    TBMesh result;
-    TBBoolean::add(wing, body, result);
-
-    mScene->AttachChild(CreateTriMesh(result));
-    //mScene->AttachChild(CreateTriMesh(wing));
-    //mScene->AttachChild(CreateTriMesh(body));
+    mScene->AttachChild(CreateMesh());
 }
 
 void TBApplication::CreateSamples(const Circle3f& circle1,
@@ -245,19 +211,9 @@ void TBApplication::CreateWing(TBMesh &mesh)
     int sampleCount = 20;
     int delaunaySamplesCount = sampleCount * 2;
 
-    // Adding bottom faces.
+    // Create faces.
     CreateSamples(mBeginTridCircles[0], mBeginTridCircles[1], mBeginTridCircles[2], samples, 0);
-    std::vector<Vector3f>::iterator it = samples.begin();
-    for (; it != samples.end(); it++) {
-        if (it+1 != samples.end()) {
-            mesh.addTriangle(*it, mBeginTridCircles[1].Center, *(it+1));
-        } else {
-            mesh.addTriangle(*(samples.begin()), mBeginTridCircles[1].Center, *it);
-        }
-    }
-
-    // Create silhouette mesh.
-    for (int step = 0; step < mInterpoStep+1; step++) {
+    for (int step = 1; step < mInterpoStep+1; step++) {
 
         float height = step * (mHeight * (1.0 / mInterpoStep));
 
@@ -271,46 +227,36 @@ void TBApplication::CreateWing(TBMesh &mesh)
         CreateSamples(cir1, cir2, cir3, samples, height);
         delaunaySamples.insert(delaunaySamples.end(), samples.begin(), samples.end());
 
-        if (delaunaySamples.size() == delaunaySamplesCount) {
-            Vector3f *vertices = new1<Vector3f>(sampleCount * 2);
-            int i = 0;
-            for (std::vector<Vector3f>::iterator it = delaunaySamples.begin();
-                it != delaunaySamples.end(); it++, i++) {
-                Vector3f pos = *it;
-                vertices[i] = pos;
-            }
-            ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2, vertices, 0.0001f, false, Query::QT_REAL);
-
-            int numTriangles = pHull->GetNumSimplices();
-            const int* hullIndices = pHull->GetIndices();
-            for (int i=0; i<numTriangles; i++) {
-
-                int p1 = hullIndices[i*3];
-                int p2 = hullIndices[i*3 + 1];
-                int p3 = hullIndices[i*3 + 2];
-
-                // Filter the top and bottom faces of the hull.
-                if ((p1 < sampleCount && p2 < sampleCount && p3 < sampleCount) || 
-                    (p1 >= sampleCount && p2 >= sampleCount && p3 >= sampleCount)) {
-                    continue;
-                }
-
-                mesh.addTriangle(vertices[p1], vertices[p2], vertices[p3]);
-            }
-
-            delete0(pHull);
-            delete1(vertices);
+        Vector3f *vertices = new1<Vector3f>(sampleCount * 2);
+        int i = 0;
+        for (std::vector<Vector3f>::iterator it = delaunaySamples.begin();
+            it != delaunaySamples.end(); it++, i++) {
+            Vector3f pos = *it;
+            vertices[i] = pos;
         }
-    }
+        ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2, vertices, 0.0001f, false, Query::QT_REAL);
 
-    // Adding top faces.
-    it = samples.begin();
-    for (; it != samples.end(); it++) {
-        if (it+1 != samples.end()) {
-            mesh.addTriangle(*it, mEndTridCircles[1].Center, *(it+1));
-        } else {
-            mesh.addTriangle(*(samples.begin()), mEndTridCircles[1].Center, *it);
+        int numTriangles = pHull->GetNumSimplices();
+        const int* hullIndices = pHull->GetIndices();
+        for (int i=0; i<numTriangles; i++) {
+
+            int p1 = hullIndices[i*3];
+            int p2 = hullIndices[i*3 + 1];
+            int p3 = hullIndices[i*3 + 2];
+
+            bool isFaceOnTop = p1 >= sampleCount && p2 >= sampleCount && p3 >= sampleCount;
+            bool isFaceOnBottom = p1 < sampleCount && p2 < sampleCount && p3 < sampleCount;
+            if (isFaceOnTop && step != mInterpoStep) {
+                continue;
+            }
+            if (isFaceOnBottom && step != 1) {
+                continue;
+            }
+            mesh.addTriangle(vertices[p1], vertices[p2], vertices[p3]);
         }
+
+        delete0(pHull);
+        delete1(vertices);
     }
 }
 
@@ -350,6 +296,55 @@ TriMesh* TBApplication::CreateTriMesh(TBMesh &mesh) {
     tetra->SetEffectInstance(instance);
 
     return tetra;
+}
+
+TriMesh* TBApplication::CreateMesh()
+{
+    // Create Wings.
+    TBMesh *wing1 = new0 TBMesh();
+    CreateWing(*wing1);
+    Transform rotate;
+    rotate.SetRotate(HMatrix(AVector::UNIT_Z, 25.0 * Mathf::PI / 180.0));
+    wing1->transformBy(rotate);
+    Transform trans;
+    trans.SetTranslate(Vector3f(-0.5, 0.0, 2.5));
+    wing1->transformBy(trans);
+
+    TBMesh *wing2 = wing1->clone();
+    Transform rotate2;
+    rotate2.SetRotate(HMatrix(AVector::UNIT_Y, 120.0 * Mathf::PI / 180.0));
+    wing2->transformBy(rotate2);
+
+    TBMesh *wing3 = wing1->clone();
+    Transform rotate3;
+    rotate3.SetRotate(HMatrix(AVector::UNIT_Y, -120.0 * Mathf::PI / 180.0));
+    wing3->transformBy(rotate3);
+
+    TBMesh *body = new0 TBMesh();
+    CreateBody(*body);
+    Transform xform;
+    xform.SetRotate(HMatrix(AVector::UNIT_X, Mathf::PI / 2.0));
+    body->transformBy(xform);
+
+    // Boolean wings and body.
+    TBMesh *result1 = new0 TBMesh();
+    TBBoolean::add(*wing1, *body, *result1);
+    TBMesh *result2 = new0 TBMesh();
+    TBBoolean::add(*wing2, *result1, *result2);
+    TBMesh *result3 = new0 TBMesh();
+    TBBoolean::add(*wing3, *result2, *result3);
+
+    TriMesh* tMesh = CreateTriMesh(*result3);
+
+    delete0(wing1);
+    delete0(wing2);
+    delete0(wing3);
+    delete0(body);
+    delete0(result1);
+    delete0(result2);
+    delete0(result3);
+
+    return tMesh;
 }
 
 //----------------------------------------------------------------------------

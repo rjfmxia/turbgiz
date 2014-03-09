@@ -38,6 +38,7 @@ protected:
     // Mesh create methods.
     void CreateWing(TBMesh &mesh);
     void CreateBody(TBMesh &mesh);
+    TriMesh* CreateMesh();
     TriMesh* CreateTriMesh(TBMesh &mesh);
 
     void CreateScene ();

@@ -12,6 +12,20 @@ TBMesh::~TBMesh()
 
 }
 
+TBMesh *TBMesh::clone() const
+{
+	TBMesh *mesh = new0 TBMesh();
+	mesh->mVerticeNum = mVerticeNum;
+	mesh->mVertices.insert(mesh->mVertices.end(), mVertices.begin(), mVertices.end());
+	mesh->mIndices.insert(mesh->mIndices.end(), mIndices.begin(), mIndices.end());
+
+	std::map<std::string, int>::const_iterator it = mIndexedVertices.begin();
+	for (; it != mIndexedVertices.end(); it++) {
+		mesh->mIndexedVertices[it->first] = it->second;
+	}
+	return mesh;
+}
+
 std::string TBMesh::hashVertex(const Vector3f vertex)
 {
 	int x = int (vertex.X() * 10000);

@@ -21,6 +21,8 @@ class TBMesh
 		const std::vector<Vector3f>& getVertices() const;
 		const std::vector<int>& getIndices() const;
 
+		TBMesh *clone() const;
+
 	private:
 		std::string hashVertex(const Vector3f);
 		int pushVectex(const Vector3f);
