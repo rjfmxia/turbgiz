@@ -12,6 +12,7 @@
 
 WM5_WINDOW_APPLICATION(TBApplication);
 
+
 //----------------------------------------------------------------------------
 TBApplication::TBApplication ()
     :
@@ -135,6 +136,22 @@ void TBApplication::CreateScene ()
     mCullState->Enabled = false;
     mRenderer->SetOverrideCullState(mCullState);
 
+    // Shading effect.
+    Material* steel = new0 Material();
+    steel->Emissive = Float4(0.0f, 0.0f, 0.0f, 1.0f);
+    steel->Ambient = Float4(0.24725f, 0.2245f, 0.2645f, 1.0f);
+    steel->Diffuse = Float4(0.34615f, 0.3143f, 0.2903f, 1.0f);
+    steel->Specular = Float4(0.697357f, 0.623991f, 0.608006f, 83.2f);
+
+    Light *light = new0 Light(Light::LT_DIRECTIONAL);
+    light->Ambient = Float4(0.75f, 0.75f, 0.75f, 1.0f);
+    light->Diffuse = Float4(1.0f, 1.0f, 1.0f, 1.0f);
+    light->Specular = Float4(1.0f, 1.0f, 1.0f, 1.0f);
+    light->SetDirection(AVector(1.0f, 1.0f, 1.0f));
+
+    LightDirPerVerEffect* effectDV = new0 LightDirPerVerEffect();
+    mEffect = effectDV->CreateInstance(light, steel);
+
     // Create mesh.
     mScene->AttachChild(CreateMesh());
 }
@@ -178,7 +195,7 @@ void TBApplication::CreateBody(TBMesh &mesh)
     int sampleCount = 20;
     float harfHeight = 2;
     float radius = 4;
-    Vector3f *vertices = new1<Vector3f>(sampleCount * 2 );
+    Vector3f *vertices = new1<Vector3f>(sampleCount * 2 + 2 );
     float angle = Mathf::TWO_PI / sampleCount;
     for (int i = 0; i < sampleCount; ++i)
     {
@@ -188,7 +205,10 @@ void TBApplication::CreateBody(TBMesh &mesh)
         vertices[i + sampleCount] = Vector3f(x, y, harfHeight);
     }
 
-    ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2, vertices, 0.0001f, false, Query::QT_REAL);
+    vertices[sampleCount * 2] = Vector3f(0, 0, -harfHeight - 0.01);
+    vertices[sampleCount * 2 + 1] = Vector3f(0, 0, harfHeight + 0.01);
+
+    ConvexHull3f *pHull = new0 ConvexHull3f(sampleCount * 2 + 2, vertices, 0.0001f, false, Query::QT_REAL);
 
     int numTriangles = pHull->GetNumSimplices();
     const int* hullIndices = pHull->GetIndices();
@@ -260,24 +280,31 @@ void TBApplication::CreateWing(TBMesh &mesh)
     }
 }
 
-TriMesh* TBApplication::CreateTriMesh(TBMesh &mesh) {
+TriMesh* TBApplication::CreateTriMesh(const TBMesh &mesh) {
 
-    const std::vector<Vector3f>& vertices = mesh.getVertices();
-    const std::vector<int>& indices = mesh.getIndices();
+    std::vector<Vector3f> vertices;
+    std::vector<int> indices;
+    std::vector<Vector3f> normals;
+    ComputeNormals(mesh, vertices, indices, normals);
 
-    // Create TriMesh for rendering.
-    VertexFormat* vformat = VertexFormat::Create(2,
+    // Create TriMesh for rendering. The normals are duplicated to texture
+    // coordinates to avoid the AMD lighting problems due to use of
+    // pre-OpenGL2.x extensions.
+    VertexFormat* vformat = VertexFormat::Create(3,
         VertexFormat::AU_POSITION, VertexFormat::AT_FLOAT3, 0,
-        VertexFormat::AU_COLOR, VertexFormat::AT_FLOAT4, 0);
-    int vstride = vformat->GetStride();
+        VertexFormat::AU_NORMAL, VertexFormat::AT_FLOAT3, 0,
+        VertexFormat::AU_TEXCOORD, VertexFormat::AT_FLOAT3, 1);
 
+    int vstride = vformat->GetStride();
     VertexBuffer* vbuffer = new0 VertexBuffer(vertices.size(), vstride);
     VertexBufferAccessor vba(vformat, vbuffer);
     Float4 lightGray(0.75f, 0.75f, 0.75f, 1.0f);
     std::vector<Vector3f>::const_iterator it =  vertices.begin();
     for (int j=0; it != vertices.end(); it++, j++) {
         vba.Position<Vector3f>(j) = *it;
-        vba.Color<Float4>(0, j) = lightGray;
+        Vector3f &normal = normals[j];
+        vba.Normal<Vector3f>(j) = normal;
+        vba.TCoord<Vector3f>(1, j) = normal;
     }
 
     int indexCount = indices.size();
@@ -290,10 +317,7 @@ TriMesh* TBApplication::CreateTriMesh(TBMesh &mesh) {
     }
 
     TriMesh* tetra = new0 TriMesh(vformat, vbuffer, ibuffer);
-    VisualEffectInstance* instance = VertexColor4Effect::CreateUniqueInstance();
-    instance->GetEffect()->GetAlphaState(0, 0)->BlendEnabled = true;
-    instance->GetEffect()->GetWireState(0, 0)->Enabled = true;
-    tetra->SetEffectInstance(instance);
+    tetra->SetEffectInstance(mEffect);
 
     return tetra;
 }
@@ -345,6 +369,41 @@ TriMesh* TBApplication::CreateMesh()
     delete0(result3);
 
     return tMesh;
+}
+
+void TBApplication::ComputeNormals (const TBMesh &mesh, std::vector<Vector3f> &flatVertices, std::vector<int> &flatIndices, std::vector<Vector3f> &normals)
+{
+    const std::vector<Vector3f>& vertices = mesh.getVertices();
+    const std::vector<int>& indices = mesh.getIndices();
+
+    normals.clear();
+    flatVertices.clear();
+    flatIndices.clear();
+
+    for (int j=0; j<indices.size(); j+=3) {
+        int i1 = indices[j];
+        int i2 = indices[j+1];
+        int i3 = indices[j+2];
+        Vector3f p1 = vertices[i1];
+        Vector3f p2 = vertices[i2];
+        Vector3f p3 = vertices[i3];
+
+        Vector3f cross1 = p2 - p1;
+        Vector3f cross2 = p3 - p1;
+        Vector3f normal = cross1.Cross(cross2);
+        normal.Normalize();
+
+        // Fill in data.
+        flatVertices.push_back(p1);
+        flatVertices.push_back(p2);
+        flatVertices.push_back(p3);
+        flatIndices.push_back(j);
+        flatIndices.push_back(j+1);
+        flatIndices.push_back(j+2);
+        normals.push_back(normal);
+        normals.push_back(normal);
+        normals.push_back(normal);
+    }
 }
 
 //----------------------------------------------------------------------------

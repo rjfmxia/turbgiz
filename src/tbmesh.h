@@ -23,6 +23,8 @@ class TBMesh
 
 		TBMesh *clone() const;
 
+		void smooth();
+		
 	private:
 		std::string hashVertex(const Vector3f);
 		int pushVectex(const Vector3f);

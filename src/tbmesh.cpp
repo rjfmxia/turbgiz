@@ -1,6 +1,7 @@
 
 #include "tbmesh.h"
 #include "Wm5APoint.h"
+#include "Wm5MeshSmoother.h"
 
 TBMesh::TBMesh()
 {
@@ -83,4 +84,34 @@ TBMesh& TBMesh::transformBy(Transform xform)
 	}
 	return const_cast<TBMesh&>(*this);
 }
+
+void TBMesh::smooth()
+{
+	int numVertices = mVertices.size();
+	int numIndices = mIndices.size();
+	Vector3f *vertices = new1<Vector3f>(numVertices);
+	int *indices = new1<int>(numIndices);
+
+	std::vector<Vector3f>::iterator it = mVertices.begin();
+	for (int i = 0; it != mVertices.end(); it++) {
+		vertices[i] = *it;
+		i++;
+	}
+
+	std::vector<int>::iterator iit = mIndices.begin();
+	for (int i = 0; iit != mIndices.end(); iit++) {
+		indices[i] = *iit;
+		i++;
+	}
+	MeshSmootherf smoother(numVertices, vertices, numIndices / 3, indices);
+	smoother.Update();
+
+	for (int i=0; i<numVertices; i++) {
+		mVertices.at(i) = vertices[i];
+	}
+
+	delete1(vertices);
+	delete1(indices);
+}
+
 

@@ -39,13 +39,16 @@ protected:
     void CreateWing(TBMesh &mesh);
     void CreateBody(TBMesh &mesh);
     TriMesh* CreateMesh();
-    TriMesh* CreateTriMesh(TBMesh &mesh);
+    TriMesh* CreateTriMesh(const TBMesh &mesh);
+    void ComputeNormals (const TBMesh &mesh, std::vector<Vector3f>&, std::vector<int>&, std::vector<Vector3f> &normals);
 
     void CreateScene ();
     TriMesh* CreateSphere (const Vector3f& origin, float radius);
 
     // A visual representation of the hull.
     NodePtr mScene, mTrnNode;
+    LightPtr mLight;
+    VisualEffectInstancePtr mEffect;
     WireStatePtr mWireState;
     CullStatePtr mCullState;
     Culler mCuller;

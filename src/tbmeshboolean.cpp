@@ -37,10 +37,9 @@ static void tbMeshFromGtsSurface(GtsSurface * s, TBMesh &mesh)
 	GSList * i = triangles;
 	while (i)
 	{
-		GtsEdge * e1, * e2, * e3;
 		GtsVertex * p1, * p2, * p3;
 		GtsTriangle * t = (GtsTriangle *)i->data;
-		gts_triangle_vertices_edges (t, NULL, &p1, &p2, &p3, &e1, &e2, &e3);
+		gts_triangle_vertices (t, &p1, &p2, &p3);
 
 		Vector3f v1( GTS_POINT(p1)->x, GTS_POINT(p1)->y, GTS_POINT(p1)->z);
 		Vector3f v2( GTS_POINT(p2)->x, GTS_POINT(p2)->y, GTS_POINT(p2)->z);
